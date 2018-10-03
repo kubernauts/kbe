@@ -1,0 +1,248 @@
+# Kubernetes by example with oc tool
+http://kubernetesbyexample.com/
+
+minishift ssh
+
+## Correct time zone
+
+sudo ln -sf /usr/share/zoneinfo/Europe/Berlin /etc/localtime
+
+oc run sise --image=mhausenblas/simpleservice:0.5.0 --port=9876
+oc get pods
+oc describe pod sise-1-p4hn2
+kubectl run sise --image=mhausenblas/simpleservice:0.5.0 --port=9876
+kubectl get pods
+kubectl describe pod sise-748bf8d98b-ww7gd
+oc describe pod sise-748bf8d98b-ww7gd | grep IP:
+IP:             172.17.0.5
+
+minishift ssh
+
+curl 172.17.0.5:9876/health
+curl 172.17.0.5:9876/info
+curl 172.17.0.5:9876/env
+curl 172.17.0.5:9876/endpoint0
+sudo docker images
+sudo docker ps -a
+
+## Pods
+http://kubernetesbyexample.com/pods/
+
+## twocontainers pod
+ 
+oc create -f pods/pod.yaml
+
+oc get pods
+
+oc rsh -c sise pod/twocontainers
+kubectl exec -it twocontainers -c sise -- bash
+
+oc rsh -c shell pod/twocontainers
+kubectl exec -it twocontainers -c shell -- bash
+
+## constraint pod
+
+oc create -f pods/constraint-pod.yaml
+
+## labels
+http://kubernetesbyexample.com/labels/
+
+cat labels/pod.yaml
+oc create -f labels/pod.yaml
+oc get pods --show-labels
+oc label pods labelex owner=arash
+oc get pods --selector owner=arash
+oc get pods --selector owner=arash --show-labels
+oc get pods -l env=development
+
+oc create -f labels/anotherpod.yaml
+oc get pods -l 'env in (production, development)'
+
+## ReplicationController
+http://kubernetesbyexample.com/rcs/
+
+oc create -f rcs/rc.yaml
+oc get all
+
+## ReplicaSet
+
+oc create -f rcs/rs.yaml
+oc get pods -l app=sise
+oc delete all -l app=sise
+
+## Scale
+
+oc scale --replicas=3 rc/rcex
+oc get all
+
+## delete all
+
+oc delete all --all
+
+## Deployment
+http://kubernetesbyexample.com/deployments/
+
+cat deployments/d09.yaml
+oc create -f deployments/d09.yaml
+oc get pods -o wide
+minishift ssh
+curl 172.17.0.6:9876/info
+oc apply -f deployments/d10.yaml
+oc edit deployment sise-deploy
+oc get pods -w
+oc get rs
+oc rollout history deploy/sise-deploy
+oc rollout undo deploy/sise-deploy --to-revision=1
+oc exec -it sise-deploy-cb88d6cf6-2hq6j -- curl 172.17.0.9:9876/info
+oc delete deployment sise-deploy
+
+## Services
+http://kubernetesbyexample.com/services/
+
+
+cat services/rc.yaml
+cat services/svc.yaml
+oc create -f services/rc.yaml
+oc create -f services/svc.yaml
+oc describe svc simpleservice
+minishift ssh
+ping 172.17.0.X
+ping 172.30.111.X
+curl 172.30.111.213:80/info
+
+[docker@minishift ~]$ sudo iptables-save | grep simpleservice
+-A KUBE-SEP-I3C32BPFG3ETU4HZ -s 172.17.0.5/32 -m comment --comment "workshop/simpleservice:" -j KUBE-MARK-MASQ
+-A KUBE-SEP-I3C32BPFG3ETU4HZ -p tcp -m comment --comment "workshop/simpleservice:" -m tcp -j DNAT --to-destination 172.17.0.5:9876
+-A KUBE-SERVICES -d 172.30.111.213/32 -p tcp -m comment --comment "workshop/simpleservice: cluster IP" -m tcp --dport 80 -j KUBE-SVC-NEJQKE7N6KDTL4P
+R
+-A KUBE-SVC-NEJQKE7N6KDTL4PR -m comment --comment "workshop/simpleservice:" -j KUBE-SEP-I3C32BPFG3ETU4HZ
+
+exit
+
+oc scale --replicas=2 rc/rcsise
+minishift ssh
+[docker@minishift ~]$ sudo iptables-save | grep simpleservice
+
+--> a new iptables rule has been added
+
+## Service Discovery
+http://kubernetesbyexample.com/sd/
+
+
+oc delete all --all
+oc create -f sd/rc.yaml
+oc create -f sd/svc.yaml
+cat sd/jumpod.yaml
+oc create -f sd/jumpod.yaml
+oc get svc
+oc get pods
+oc describe svc thesvc
+oc exec jumpod -c shell -i -t -- ping thesvc.workshop.svc.cluster.local
+$ oc get pod jumpod -o wide
+oc exec jumpod -c shell -i -t -- curl http://thesvc/info
+
+To access a service that is deployed in a different namespace than the one you’re accessing it from,
+use a FQDN in the form $SVC.$PROJECT.svc.cluster.local
+
+oc new-project other
+oc create -f sd/other-rc.yaml
+oc get pods -n workshop
+oc get pods -n other
+oc project workshop
+oc exec jumpod -c shell -i -t -- curl http://thesvc.other/info
+
+## Health Checks
+http://kubernetesbyexample.com/healthz/
+
+
+oc create -f healthz/pod.yaml
+oc describe pod hc
+oc create -f healthz/badpod.yaml
+oc describe pod badpod
+oc create -f healthz/ready.yaml
+oc describe pod ready
+
+
+# Environment Variables
+http://kubernetesbyexample.com/envs/
+
+cat envs/pod.yaml
+oc create -f envs/pod.yaml
+oc describe pod envs | grep IP:
+oc get pods
+oc exec -it envs -- curl 172.17.0.5:9876/info
+oc exec envs -- printenv
+
+# Projects and Namespaces
+http://kubernetesbyexample.com/ns/
+
+
+oc create -f ns/ns.yaml # run as admin
+oc new-project test
+oc create -f ns/pod.yaml -n test
+oc get pods -n test
+oc get pods --all-namespaces # run as admin
+
+
+## Volumes
+http://kubernetesbyexample.com/volumes/
+
+cat volumes/pod.yaml
+oc create -f volumes/pod.yaml
+oc get pods
+oc exec sharevol -c c1 -i -t -- bash
+touch /tmp/xchange/data-c1
+
+bash-4.2$ mount | grep xchange
+/dev/vda1 on /tmp/xchange type xfs (rw,relatime,seclabel,attr2,inode64,noquota)
+
+oc exec sharevol -c c2 -i -t -- bash
+touch /tmp/data/data-c2
+
+## Secrets
+http://kubernetesbyexample.com/secrets/
+
+echo -n "A19fh68B001j" > ./apikey.txt
+oc create secret generic apikey --from-file=./apikey.txt
+cat secrets/pod.yaml
+oc create -f secrets/pod.yaml
+oc exec consumesec -c shell -i -t -- bash
+mount | grep apikey
+cat /tmp/apikey/apikey.txt
+
+## Logging
+http://kubernetesbyexample.com/logging/
+
+cat logging/pod.yaml
+oc create -f logging/pod.yaml
+oc logs --tail=10 logme -c gen
+oc logs -f --since=10s logme -c gen
+
+cat logging/oneshotpod.yaml
+oc create -f logging/oneshotpod.yaml
+oc logs oneshot
+
+## Jobs
+
+cat jobs/job.yaml
+oc create -f jobs/job.yaml
+oc logs countdown-q48px
+
+## Nodes
+
+oc login -u system:admin
+oc get nodes
+oc label nodes localhost shouldrun=here
+oc get nodes -o wide --show-labels
+
+
+
+
+
+
+
+
+
+
+
+
