@@ -7,6 +7,8 @@ minishift ssh
 
 sudo ln -sf /usr/share/zoneinfo/Europe/Berlin /etc/localtime
 
+## oc run
+
 oc run sise --image=mhausenblas/simpleservice:0.5.0 --port=9876
 oc get pods
 oc describe pod sise-1-p4hn2
@@ -104,7 +106,9 @@ cat services/rc.yaml
 cat services/svc.yaml
 oc create -f services/rc.yaml
 oc create -f services/svc.yaml
+oc get pods -o wide
 oc describe svc simpleservice
+oc describe svc simpleservice | grep IP:
 minishift ssh
 ping 172.17.0.X
 ping 172.30.111.X
@@ -138,7 +142,7 @@ oc get svc
 oc get pods
 oc describe svc thesvc
 oc exec jumpod -c shell -i -t -- ping thesvc.workshop.svc.cluster.local
-$ oc get pod jumpod -o wide
+oc get pod jumpod -o wide
 oc exec jumpod -c shell -i -t -- curl http://thesvc/info
 
 To access a service that is deployed in a different namespace than the one you’re accessing it from,
@@ -146,9 +150,10 @@ use a FQDN in the form $SVC.$PROJECT.svc.cluster.local
 
 oc new-project other
 oc create -f sd/other-rc.yaml
-oc get pods -n workshop
+oc create -f sd/other-svc.yaml
+oc get pods -n workshop-<your name>
 oc get pods -n other
-oc project workshop
+oc project workshop-<your name>
 oc exec jumpod -c shell -i -t -- curl http://thesvc.other/info
 
 ## Health Checks
@@ -236,7 +241,19 @@ oc label nodes localhost shouldrun=here
 oc get nodes -o wide --show-labels
 
 
+## Other commands
 
+oc explain pod
+oc explain statefulset
+oc get pod charge-connector-1-13794 -o=yaml
+oc export all --as-template=kafka-showcase --selector='app=kafka-showcase'
+
+# Useful links
+
+https://blog.openshift.com/oc-command-newbies/
+
+
+https://github.com/nekop/openshift-sandbox/blob/master/docs/command-cheatsheet.md
 
 
 
